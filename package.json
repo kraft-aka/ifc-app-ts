@@ -1,0 +1,23 @@
+{
+  "name": "ifc-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3",
+    "vite": "^5.4.1"
+  },
+  "dependencies": {
+    "@thatopen/components": "^2.2.9",
+    "@thatopen/components-front": "^2.2.2",
+    "@thatopen/fragments": "^2.2.0",
+    "@thatopen/ui": "^2.2.2",
+    "three": "^0.168.0",
+    "web-ifc": "^0.0.57"
+  }
+}
