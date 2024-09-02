@@ -48,16 +48,25 @@ for (const cat of exludedCats) {
 
 fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true;
 
-
+// add bounding box
+const fragmentBox = components.get(OBC.BoundingBoxer);
+let bbox = null;
 
 async function loadIfc() {
-  const file = await fetch("https://thatopen.github.io/engine_components/resources/small.ifc",);
-  const data = await file.arrayBuffer();
-  const buffer = new Uint8Array(data);
-  const model = await fragmentIfcLoader.load(buffer);
-  world.scene.three.add(model);
-}
+  const file = await fetch(
+    "https://thatopen.github.io/engine_components/resources/small.ifc"
+    );
+    const data = await file.arrayBuffer();
+    const buffer = new Uint8Array(data);
+    const model = await fragmentIfcLoader.load(buffer);
+    world.scene.three.add(model);
 
+    fragmentBox.add(model);
+    bbox = fragmentBox.getMesh();
+    fragmentBox.reset();
+  }
+    
+    
 function download(file: File) {
   const link = document.createElement("a");
   link.href = URL.createObjectURL(file);
@@ -81,9 +90,6 @@ async function exportFragments() {
   }
 }
 
-function refreshScene() {
-  window.location.reload()
-}
 
 // cleans the memory
 function disposeFragments() {
@@ -101,20 +107,31 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
       
         <bim-button label="Load IFC"
           @click="${() => {
-      loadIfc();
-    }}">
+            loadIfc();
+          }}">
         </bim-button>  
             
         <bim-button label="Export fragments"
           @click="${() => {
-      exportFragments();
-    }}">
+            exportFragments();
+          }}">
 
     <bim-button label="Refresh scene"
           @click="${() => {
-      disposeFragments();
-    }}">
-        </bim-button>  
+            disposeFragments();
+          }}">
+        </bim-button> 
+        
+        <bim-button 
+        label="Fit BIM model" 
+        @click="${() => {
+          if (bbox) {
+            world.camera.controls.fitToSphere(bbox, true);
+          } else {
+            console.log('Bound ing box is not available to fit this camera!')
+          }
+        }}">  
+      </bim-button>  
 
       
       </bim-panel-section>
@@ -125,19 +142,20 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
 
 document.body.append(panel);
 
-
 const button = BUI.Component.create<BUI.PanelSection>(() => {
   return BUI.html`
       <bim-button class="phone-menu-toggler" icon="solar:settings-bold"
         @click="${() => {
-      if (panel.classList.contains("options-menu-visible")) {
-        panel.classList.remove("options-menu-visible");
-      } else {
-        panel.classList.add("options-menu-visible");
-      }
-    }}">
+          if (panel.classList.contains("options-menu-visible")) {
+            panel.classList.remove("options-menu-visible");
+          } else {
+            panel.classList.add("options-menu-visible");
+          }
+        }}">
       </bim-button>
     `;
 });
 
 document.body.append(button);
+
+
