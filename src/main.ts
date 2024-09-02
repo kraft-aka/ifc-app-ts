@@ -46,7 +46,7 @@ for (const cat of exludedCats) {
   fragmentIfcLoader.settings.excludedCategories.add(cat);
 }
 
-fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true; 
+fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true;
 
 
 
@@ -81,6 +81,10 @@ async function exportFragments() {
   }
 }
 
+function refreshScene() {
+  window.location.reload()
+}
+
 // cleans the memory
 function disposeFragments() {
   fragments.dispose();
@@ -97,21 +101,21 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
       
         <bim-button label="Load IFC"
           @click="${() => {
-            loadIfc();
-          }}">
+      loadIfc();
+    }}">
         </bim-button>  
             
         <bim-button label="Export fragments"
           @click="${() => {
-            exportFragments();
-          }}">
-        </bim-button>  
-            
-        <bim-button label="Dispose fragments"
+      exportFragments();
+    }}">
+
+    <bim-button label="Refresh scene"
           @click="${() => {
-            disposeFragments();
-          }}">
-        </bim-button>
+      disposeFragments();
+    }}">
+        </bim-button>  
+
       
       </bim-panel-section>
       
@@ -126,12 +130,12 @@ const button = BUI.Component.create<BUI.PanelSection>(() => {
   return BUI.html`
       <bim-button class="phone-menu-toggler" icon="solar:settings-bold"
         @click="${() => {
-          if (panel.classList.contains("options-menu-visible")) {
-            panel.classList.remove("options-menu-visible");
-          } else {
-            panel.classList.add("options-menu-visible");
-          }
-        }}">
+      if (panel.classList.contains("options-menu-visible")) {
+        panel.classList.remove("options-menu-visible");
+      } else {
+        panel.classList.add("options-menu-visible");
+      }
+    }}">
       </bim-button>
     `;
 });
