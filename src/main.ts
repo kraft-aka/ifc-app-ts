@@ -142,6 +142,9 @@ if (model) {
   console.log("Model is not uploaded!");
 }
 
+//TODO: 
+// IFX componetClassifier
+
 console.log(walls);
 console.log(componentClassifier);
 
