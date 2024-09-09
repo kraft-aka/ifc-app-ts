@@ -2,6 +2,7 @@ import "./style.css";
 import * as WEBIFC from "web-ifc";
 import * as BUI from "@thatopen/ui";
 import * as OBC from "@thatopen/components";
+import * as OBCF from "@thatopen/components-front";
 import * as THREE from "three";
 
 const container = document.getElementById("app")!;
@@ -13,27 +14,30 @@ const worlds = components.get(OBC.Worlds);
 const world = worlds.create<
   OBC.SimpleScene,
   OBC.SimpleCamera,
-  OBC.SimpleRenderer
+  OBCF.PostproductionRenderer
 >();
 
 world.scene = new OBC.SimpleScene(components);
-world.renderer = new OBC.SimpleRenderer(components, container);
+world.renderer = new OBCF.PostproductionRenderer(components, container);
 world.camera = new OBC.SimpleCamera(components);
 
 components.init();
 
 world.camera.controls.setLookAt(12, 6, 8, 0, 0, -10);
+world.renderer.postproduction.enabled = true;
 
 world.scene.setup();
 
 const grids = components.get(OBC.Grids);
-grids.create(world);
+const grid = grids.create(world);
+
+world.renderer.postproduction.customEffects.excludedMeshes.push(grid.three);
 
 // global color
 const color = new THREE.Color("#202932");
 
 // sets the background of the scene to transparent
-world.scene.three.background = null;
+// world.scene.three.background = null;
 
 // Add UI
 BUI.Manager.init();
@@ -142,8 +146,37 @@ if (model) {
   console.log("Model is not uploaded!");
 }
 
-//TODO: 
+//TODO:
 // IFX componetClassifier
+
+// Highligher------------------------
+const highligher = components.get(OBCF.Highlighter);
+highligher.setup({ world });
+highligher.zoomToSelection = true;
+
+
+// Outliner, sets outline on click event --- disabled
+const outliner = components.get(OBCF.Outliner);
+outliner.world = world;
+outliner.enabled = false;
+
+outliner.create(
+  "outline",
+  new THREE.MeshBasicMaterial({
+    color: "#ccc",
+    transparent: true,
+    opacity: 0.5,
+  })
+);
+
+highligher.events.select.onHighlight.add((data) => {
+  outliner.clear("outline");
+  outliner.add("outline", data);
+});
+
+highligher.events.select.onClear.add(() => {
+  outliner.clear("outline");
+});
 
 console.log(walls);
 console.log(componentClassifier);
@@ -156,30 +189,30 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
       
         <bim-button label="Load IFC"
           @click="${() => {
-            loadIfc();
-          }}">
+      loadIfc();
+    }}">
         </bim-button>  
             
         <bim-button label="Export fragments"
           @click="${() => {
-            exportFragments();
-          }}">
+      exportFragments();
+    }}">
 
     <bim-button label="Refresh scene"
           @click="${() => {
-            disposeFragments();
-          }}">
+      disposeFragments();
+    }}">
         </bim-button> 
         
         <bim-button 
         label="Fit BIM model" 
         @click="${() => {
-          if (bbox) {
-            world.camera.controls.fitToSphere(bbox, true);
-          } else {
-            console.log("Bound ing box is not available to fit this camera!");
-          }
-        }}">  
+      if (bbox) {
+        world.camera.controls.fitToSphere(bbox, true);
+      } else {
+        console.log("Bound ing box is not available to fit this camera!");
+      }
+    }}">  
       </bim-button>  
 
       
@@ -189,32 +222,32 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
         <bim-color-input 
           label="Walls Color" 
           @input="${({ target }: { target: BUI.ColorInput }) => {
-            color.set(target.color);
-            componentClassifier.setColor(walls, color);
-          }}">
+      color.set(target.color);
+      componentClassifier.setColor(walls, color);
+    }}">
         </bim-color-input>
       
         <bim-color-input 
           label="Slabs Color"  
           @input="${({ target }: { target: BUI.ColorInput }) => {
-            color.set(target.color);
-            componentClassifier.setColor(slabs, color);
-          }}">
+      color.set(target.color);
+      componentClassifier.setColor(slabs, color);
+    }}">
         </bim-color-input>
 
         <bim-color-input 
         label="Slabs Color"  
         @input="${({ target }: { target: BUI.ColorInput }) => {
-          color.set(target.color);
-          componentClassifier.setColor(doors, color);
-        }}">
+      color.set(target.color);
+      componentClassifier.setColor(doors, color);
+    }}">
       </bim-color-input>
  
         <bim-button 
           label="Reset walls color" 
           @click="${() => {
-            componentClassifier.resetColor(allItems);
-          }}">  
+      componentClassifier.resetColor(allItems);
+    }}">  
         </bim-button>  
 
       </bim-panel-section>
@@ -229,12 +262,12 @@ const button = BUI.Component.create<BUI.PanelSection>(() => {
   return BUI.html`
       <bim-button class="phone-menu-toggler" icon="solar:settings-bold"
         @click="${() => {
-          if (panel.classList.contains("options-menu-visible")) {
-            panel.classList.remove("options-menu-visible");
-          } else {
-            panel.classList.add("options-menu-visible");
-          }
-        }}">
+      if (panel.classList.contains("options-menu-visible")) {
+        panel.classList.remove("options-menu-visible");
+      } else {
+        panel.classList.add("options-menu-visible");
+      }
+    }}">
       </bim-button>
     `;
 });
