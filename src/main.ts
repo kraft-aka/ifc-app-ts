@@ -72,6 +72,7 @@ async function loadIfc() {
   const buffer = new Uint8Array(data);
   model = await fragmentIfcLoader.load(buffer);
   world.scene.three.add(model);
+  localStorage.setItem('model', JSON.stringify(model));
 
   fragments.load(model); // check this
 
@@ -105,6 +106,9 @@ async function exportFragments() {
 
 // cleans the memory
 function disposeFragments() {
+  let item = localStorage.getItem('model');
+  item = ''
+  localStorage.setItem('model',item)
   fragments.dispose();
 }
 
