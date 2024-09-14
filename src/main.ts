@@ -5,9 +5,9 @@ import * as OBC from "@thatopen/components";
 import * as OBCF from "@thatopen/components-front";
 import * as THREE from "three";
 
-const container = document.getElementById("app")!;
+const container = document.getElementById("app");
 
-const components = new OBC.Components();
+const components = new OBC.Components()
 
 const worlds = components.get(OBC.Worlds);
 
@@ -108,7 +108,7 @@ async function exportFragments() {
 function disposeFragments() {
   let item = localStorage.getItem('model');
   item = ''
-  localStorage.setItem('model',item)
+  localStorage.setItem('model', item)
   fragments.dispose();
 }
 
@@ -185,6 +185,36 @@ highligher.events.select.onClear.add(() => {
 console.log(walls);
 console.log(componentClassifier);
 
+
+function showComment() {
+  const ifcCanvas = container?.querySelector('canvas')
+  if (ifcCanvas) {
+    //const dataURL = ifcCanvas.toDataURL('jpeg');
+    const w: number = ifcCanvas.width;
+    const h: number = ifcCanvas.height;
+    world.renderer?.three.render(world.scene.three, world.camera.three);
+    const gl = ifcCanvas.getContext('webgl2');
+    const imageData = new ImageData(w,h);
+
+   gl?.readPixels(
+      0,0,gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, imageData.data
+    );
+
+    createImageBitmap(imageData, { imageOrientation: "flipY" }).then(image => {
+      const canvas: HTMLCanvasElement = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx: CanvasRenderingContext2D = canvas.getContext('2d')!;
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(image, 0,0, w,h)
+  
+      container?.appendChild(canvas);
+      console.log(ifcCanvas,w,h)
+     })
+
+  }
+}
+
 const panel = BUI.Component.create<BUI.PanelSection>(() => {
   return BUI.html`
   <bim-panel active label="IFC-APP-TS" class="options-menu">
@@ -216,6 +246,12 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
       } else {
         console.log("Bound ing box is not available to fit this camera!");
       }
+    }}">  
+      </bim-button>  
+      <bim-button 
+        label="Comment" 
+        @click="${() => {
+      showComment();
     }}">  
       </bim-button>  
 
@@ -252,7 +288,7 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
           @click="${() => {
       componentClassifier.resetColor(allItems);
     }}">  
-        </bim-button>  
+        </bim-button>
 
       </bim-panel-section>
       
