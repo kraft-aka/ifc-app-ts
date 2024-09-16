@@ -194,10 +194,10 @@ function showComment() {
     const h: number = ifcCanvas.height;
     world.renderer?.three.render(world.scene.three, world.camera.three);
     const gl = ifcCanvas.getContext('webgl2');
-    const imageData = new ImageData(w,h);
+    const imageData = new ImageData(w, h);
 
-   gl?.readPixels(
-      0,0,gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, imageData.data
+    gl?.readPixels(
+      0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, imageData.data
     );
 
     createImageBitmap(imageData, { imageOrientation: "flipY" }).then(image => {
@@ -206,13 +206,145 @@ function showComment() {
       canvas.height = h;
       const ctx: CanvasRenderingContext2D = canvas.getContext('2d')!;
       ctx.fillRect(0, 0, w, h);
-      ctx.drawImage(image, 0,0, w,h)
-  
+      ctx.drawImage(image, 0, 0, w, h)
+
       container?.appendChild(canvas);
-      console.log(ifcCanvas,w,h)
-     })
+      console.log(ifcCanvas, w, h)
+      enableCommentDrawing(canvas)
+    })
 
   }
+
+  function enableCommentDrawing(canvas: HTMLCanvasElement) {
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    let isDrawing = false;
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let currentY = 0;
+    let savedImageData: ImageData | null = null;
+    let clouds: { x: number; y: number; width: number; height: number; text: string }[] = [];
+
+    function drawCommentCloud(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, comment: string = '') {
+      const radius = 20;
+      const tailHeight = 20;
+      const tailWidth = 30;
+      const padding = 10;
+
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+
+      // Tail
+      ctx.lineTo(x + width / 2 + tailWidth / 2, y + height);
+      ctx.lineTo(x + width / 2, y + height + tailHeight);
+      ctx.lineTo(x + width / 2 - tailWidth / 2, y + height);
+
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+
+      // Border
+      ctx.strokeStyle = 'red';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Add text if provided
+      if (comment) {
+        ctx.fillStyle = 'red';
+        ctx.font = '16px Arial';
+        ctx.fillText(comment, x + padding, y + padding + 16, width - 2 * padding);
+      }
+    }
+
+    // Mouse down event - Start drawing the cloud
+    canvas.addEventListener('mousedown', (e) => {
+      isDrawing = true;
+      const rect = canvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+
+      savedImageData = ctx?.getImageData(0, 0, canvas.width, canvas.height) || null;
+    });
+
+    // Mouse move event - Update the cloud size while drawing
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isDrawing) return;
+      const rect = canvas.getBoundingClientRect();
+      currentX = e.clientX - rect.left;
+      currentY = e.clientY - rect.top;
+
+      if (savedImageData) {
+        ctx?.putImageData(savedImageData, 0, 0);
+      }
+    });
+
+    // Mouse up event - Finish drawing the cloud
+    canvas.addEventListener('mouseup', (e) => {
+      if (!isDrawing) return;
+      isDrawing = false;
+
+      // Finalize the cloud size and add some default text
+      const width = currentX - startX;
+      const height = currentY - startY;
+      clouds.push({ x: startX, y: startY, width, height, text: '' })
+      // drawCommentCloud(ctx!, startX, startY, width, height, 'Your Comment Here');
+    });
+
+    // Click to enter text inside the cloud
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // Check if the click was inside any of the drawn clouds
+      for (let i = 0; i < clouds.length; i++) {
+        const cloud = clouds[i];
+        if (
+          clickX > cloud.x &&
+          clickX < cloud.x + cloud.width &&
+          clickY > cloud.y &&
+          clickY < cloud.y + cloud.height
+        ) {
+          // Prompt the user for text input
+          const userText = prompt('Enter your comment:', cloud.text || '');
+          if (userText !== null) {
+            // Update the cloud's text
+            cloud.text = userText;
+
+            // Restore the canvas content and redraw only the text inside the cloud
+            ctx?.putImageData(savedImageData!, 0, 0);
+
+            // Redraw all clouds without text
+            clouds.forEach((c) => {
+              drawCommentCloud(ctx!, c.x, c.y, c.width, c.height);
+            });
+
+            // Now, add the text inside the specific cloud
+            const padding = 10;
+            ctx!.fillStyle = 'black';
+            ctx!.font = '16px Arial';
+            ctx!.fillText(cloud.text, cloud.x + padding, cloud.y + padding + 16, cloud.width - 2 * padding);
+          }
+          break;
+        }
+      }
+    });
+
+    // Handle case where mouse leaves canvas while drawing
+    canvas.addEventListener('mouseleave', () => {
+      if (isDrawing) {
+        isDrawing = false;
+      }
+    });
+  }
+  // TODO: FIX THIS FUNCTION
+
 }
 
 const panel = BUI.Component.create<BUI.PanelSection>(() => {
@@ -298,21 +430,7 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
 
 document.body.append(panel);
 
-const button = BUI.Component.create<BUI.PanelSection>(() => {
-  return BUI.html`
-      <bim-button class="phone-menu-toggler" icon="solar:settings-bold"
-        @click="${() => {
-      if (panel.classList.contains("options-menu-visible")) {
-        panel.classList.remove("options-menu-visible");
-      } else {
-        panel.classList.add("options-menu-visible");
-      }
-    }}">
-      </bim-button>
-    `;
-});
 
-document.body.append(button);
 
 /* MD
 ### 🔴🔵 Classifying your BIM models
