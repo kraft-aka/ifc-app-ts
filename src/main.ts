@@ -4,10 +4,11 @@ import * as BUI from "@thatopen/ui";
 import * as OBC from "@thatopen/components";
 import * as OBCF from "@thatopen/components-front";
 import * as THREE from "three";
+import * as CUI from "@thatopen/ui-obc";
 
 const container = document.getElementById("app");
 
-const components = new OBC.Components();
+const components = new OBC.Components()
 
 const worlds = components.get(OBC.Worlds);
 
@@ -57,25 +58,41 @@ for (const cat of exludedCats) {
   fragmentIfcLoader.settings.excludedCategories.add(cat);
 }
 
-fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true;
+fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = false;
 
 // add bounding box
-const fragmentBox = components.get(OBC.BoundingBoxer);
+//const fragmentBox = components.get(OBC.BoundingBoxer);
 let bbox: THREE.Mesh | null = null;
 let model: THREE.Object3D | null = null;
 
-async function loadIfc() {
-  fragments.onFragmentsLoaded.add((m) => {
-    if (world.scene) world.scene.three.add(m);
-  });
-  // fragments.load(model); // check this
-  // fragmentBox.add(model);
-  bbox = fragmentBox.getMesh();
-  fragmentBox.reset();
-}
+fragments.onFragmentsLoaded.add((model) => {
+  if (world.scene) {
+    world.scene.three.add(model)
+    console.log(model)
+  }
+})
 
-const input = document.getElementById("file-input");
-input?.addEventListener("change", loadIfc);
+// classification tree
+const [classificationsTree, updateClassificationsTree] =
+  CUI.tables.classificationTree({
+    components,
+    classifications: [],
+  });
+
+const classifier = components.get(OBC.Classifier);
+
+fragments.onFragmentsLoaded.add(async (model) => {
+  classifier.byEntity(model)
+  await classifier.byPredefinedType(model);
+
+  const classifications = [
+    { system: "entities", label: "Entities" },
+    { system: "predefinedTypes", label: "Predefined Types" },
+  ];
+
+  updateClassificationsTree({ classifications });
+});
+
 
 function download(file: File) {
   const link = document.createElement("a");
@@ -102,9 +119,9 @@ async function exportFragments() {
 
 // cleans the memory
 function disposeFragments() {
-  let item = localStorage.getItem("model");
-  item = "";
-  localStorage.setItem("model", item);
+  let item = localStorage.getItem('model');
+  item = ''
+  localStorage.setItem('model', item)
   fragments.dispose();
 }
 
@@ -154,6 +171,7 @@ const highligher = components.get(OBCF.Highlighter);
 highligher.setup({ world });
 highligher.zoomToSelection = true;
 
+
 // Outliner, sets outline on click event --- disabled
 const outliner = components.get(OBCF.Outliner);
 outliner.world = world;
@@ -180,242 +198,77 @@ highligher.events.select.onClear.add(() => {
 console.log(walls);
 console.log(componentClassifier);
 
+
 function showComment() {
-  const ifcCanvas = container?.querySelector("canvas");
+  const ifcCanvas = container?.querySelector('canvas')
   if (ifcCanvas) {
-    //const dataURL = ifcCanvas.toDataURL('jpeg');
     const w: number = ifcCanvas.width;
     const h: number = ifcCanvas.height;
     world.renderer?.three.render(world.scene.three, world.camera.three);
-    const gl = ifcCanvas.getContext("webgl2");
+    const gl = ifcCanvas.getContext('webgl2');
     const imageData = new ImageData(w, h);
 
     gl?.readPixels(
-      0,
-      0,
-      gl.drawingBufferWidth,
-      gl.drawingBufferHeight,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      imageData.data
+      0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, imageData.data
     );
 
-    createImageBitmap(imageData, { imageOrientation: "flipY" }).then(
-      (image) => {
-        const canvas: HTMLCanvasElement = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx: CanvasRenderingContext2D = canvas.getContext("2d")!;
-        ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(image, 0, 0, w, h);
+    createImageBitmap(imageData, { imageOrientation: "flipY" }).then(image => {
+      const canvas: HTMLCanvasElement = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx: CanvasRenderingContext2D = canvas.getContext('2d')!;
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(image, 0, 0, w, h)
 
-        container?.appendChild(canvas);
-        console.log(ifcCanvas, w, h);
-        enableCommentDrawing(canvas);
-      }
-    );
+      container?.appendChild(canvas);
+      console.log(ifcCanvas, w, h)
+    })
+
   }
-
-  function enableCommentDrawing(canvas: HTMLCanvasElement) {
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    let isDrawing = false;
-    let startX = 0;
-    let startY = 0;
-    let currentX = 0;
-    let currentY = 0;
-    let savedImageData: ImageData | null = null;
-    let clouds: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      text: string;
-    }[] = [];
-
-    function drawCommentCloud(
-      ctx: CanvasRenderingContext2D,
-      x: number,
-      y: number,
-      width: number,
-      height: number,
-      comment: string = ""
-    ) {
-      const radius = 20;
-      const tailHeight = 20;
-      const tailWidth = 30;
-      const padding = 10;
-
-      ctx.beginPath();
-      ctx.moveTo(x + radius, y);
-      ctx.lineTo(x + width - radius, y);
-      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-      ctx.lineTo(x + width, y + height - radius);
-      ctx.quadraticCurveTo(
-        x + width,
-        y + height,
-        x + width - radius,
-        y + height
-      );
-
-      // Tail
-      ctx.lineTo(x + width / 2 + tailWidth / 2, y + height);
-      ctx.lineTo(x + width / 2, y + height + tailHeight);
-      ctx.lineTo(x + width / 2 - tailWidth / 2, y + height);
-
-      ctx.lineTo(x + radius, y + height);
-      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-      ctx.lineTo(x, y + radius);
-      ctx.quadraticCurveTo(x, y, x + radius, y);
-      ctx.closePath();
-
-      // Border
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Add text if provided
-      if (comment) {
-        ctx.fillStyle = "red";
-        ctx.font = "16px Arial";
-        ctx.fillText(
-          comment,
-          x + padding,
-          y + padding + 16,
-          width - 2 * padding
-        );
-      }
-    }
-
-    // Mouse down event - Start drawing the cloud
-    canvas.addEventListener("mousedown", (e) => {
-      isDrawing = true;
-      const rect = canvas.getBoundingClientRect();
-      startX = e.clientX - rect.left;
-      startY = e.clientY - rect.top;
-
-      savedImageData =
-        ctx?.getImageData(0, 0, canvas.width, canvas.height) || null;
-    });
-
-    // Mouse move event - Update the cloud size while drawing
-    canvas.addEventListener("mousemove", (e) => {
-      if (!isDrawing) return;
-      const rect = canvas.getBoundingClientRect();
-      currentX = e.clientX - rect.left;
-      currentY = e.clientY - rect.top;
-
-      if (savedImageData) {
-        ctx?.putImageData(savedImageData, 0, 0);
-      }
-    });
-
-    // Mouse up event - Finish drawing the cloud
-    canvas.addEventListener("mouseup", (e) => {
-      if (!isDrawing) return;
-      isDrawing = false;
-
-      // Finalize the cloud size and add some default text
-      const width = currentX - startX;
-      const height = currentY - startY;
-      clouds.push({ x: startX, y: startY, width, height, text: "" });
-      // drawCommentCloud(ctx!, startX, startY, width, height, 'Your Comment Here');
-    });
-
-    // Click to enter text inside the cloud
-    canvas.addEventListener("click", (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
-
-      // Check if the click was inside any of the drawn clouds
-      for (let i = 0; i < clouds.length; i++) {
-        const cloud = clouds[i];
-        if (
-          clickX > cloud.x &&
-          clickX < cloud.x + cloud.width &&
-          clickY > cloud.y &&
-          clickY < cloud.y + cloud.height
-        ) {
-          // Prompt the user for text input
-          const userText = prompt("Enter your comment:", cloud.text || "");
-          if (userText !== null) {
-            // Update the cloud's text
-            cloud.text = userText;
-
-            // Restore the canvas content and redraw only the text inside the cloud
-            ctx?.putImageData(savedImageData!, 0, 0);
-
-            // Redraw all clouds without text
-            clouds.forEach((c) => {
-              drawCommentCloud(ctx!, c.x, c.y, c.width, c.height);
-            });
-
-            // Now, add the text inside the specific cloud
-            const padding = 10;
-            ctx!.fillStyle = "black";
-            ctx!.font = "16px Arial";
-            ctx!.fillText(
-              cloud.text,
-              cloud.x + padding,
-              cloud.y + padding + 16,
-              cloud.width - 2 * padding
-            );
-          }
-          break;
-        }
-      }
-    });
-
-    // Handle case where mouse leaves canvas while drawing
-    canvas.addEventListener("mouseleave", () => {
-      if (isDrawing) {
-        isDrawing = false;
-      }
-    });
-  }
-  // TODO: FIX THIS FUNCTION
 }
 
+
 const panel = BUI.Component.create<BUI.PanelSection>(() => {
-  // const [loadIfcBtn] = CUI.buttons.loadIfc({ components });
+
+  const [loadIfcBtn] = CUI.buttons.loadIfc({ components });
   return BUI.html`
   <bim-panel active label="IFC-APP-TS" class="options-menu">
     <bim-panel-section collapsed label="Controls">
       <bim-panel-section style="padding-top: 12px;">
-      
-        <bim-button label="Load IFC"
-          @click="${() => {
-            loadIfc();
-          }}">
-        </bim-button>  
+
+      <bim-panel-section label="Importing">
+      ${loadIfcBtn}
+    </bim-panel-section>
+    <bim-panel-section label="Classifications">
+      ${classificationsTree}
+    </bim-panel-section>
             
         <bim-button label="Export fragments"
           @click="${() => {
-            exportFragments();
-          }}">
-    </bim-button> 
+      exportFragments();
+    }}">
 
     <bim-button label="Refresh scene"
           @click="${() => {
-            disposeFragments();
-          }}">
+      disposeFragments();
+    }}">
         </bim-button> 
         
         <bim-button 
         label="Fit BIM model" 
         @click="${() => {
-          if (bbox) {
-            world.camera.controls.fitToSphere(bbox, true);
-          } else {
-            console.log("Bound ing box is not available to fit this camera!");
-          }
-        }}">  
+      if (bbox) {
+        world.camera.controls.fitToSphere(bbox, true);
+      } else {
+        console.log("Bound ing box is not available to fit this camera!");
+      }
+    }}">  
       </bim-button>  
       <bim-button 
         label="Comment" 
         @click="${() => {
-          showComment();
-        }}">  
+      showComment();
+    }}">  
       </bim-button>  
 
       
@@ -425,32 +278,32 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
         <bim-color-input 
           label="Walls Color" 
           @input="${({ target }: { target: BUI.ColorInput }) => {
-            color.set(target.color);
-            componentClassifier.setColor(walls, color);
-          }}">
+      color.set(target.color);
+      componentClassifier.setColor(walls, color);
+    }}">
         </bim-color-input>
       
         <bim-color-input 
           label="Slabs Color"  
           @input="${({ target }: { target: BUI.ColorInput }) => {
-            color.set(target.color);
-            componentClassifier.setColor(slabs, color);
-          }}">
+      color.set(target.color);
+      componentClassifier.setColor(slabs, color);
+    }}">
         </bim-color-input>
 
         <bim-color-input 
         label="Slabs Color"  
         @input="${({ target }: { target: BUI.ColorInput }) => {
-          color.set(target.color);
-          componentClassifier.setColor(doors, color);
-        }}">
+      color.set(target.color);
+      componentClassifier.setColor(doors, color);
+    }}">
       </bim-color-input>
  
         <bim-button 
           label="Reset walls color" 
           @click="${() => {
-            componentClassifier.resetColor(allItems);
-          }}">  
+      componentClassifier.resetColor(allItems);
+    }}">  
         </bim-button>
 
       </bim-panel-section>
@@ -461,130 +314,252 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
 
 document.body.append(panel);
 
-// import * as OBC from "@thatopen/components";
-// import * as BUI from "@thatopen/ui";
-// import * as CUI from "../..";
-
-// BUI.Manager.init();
-
-// const components = new OBC.Components();
-
-// const viewport = document.createElement("bim-viewport");
-// viewport.name = "viewer";
-
-// const worlds = components.get(OBC.Worlds);
-// const world = worlds.create();
-
-// const sceneComponent = new OBC.SimpleScene(components);
-// sceneComponent.setup();
-// world.scene = sceneComponent;
-
-// const rendererComponent = new OBC.SimpleRenderer(components, viewport);
-// world.renderer = rendererComponent;
-
-// const cameraComponent = new OBC.SimpleCamera(components);
-// world.camera = cameraComponent;
-
-// viewport.addEventListener("resize", () => {
-//   rendererComponent.resize();
-//   cameraComponent.updateAspect();
+// const button = BUI.Component.create<BUI.PanelSection>(() => {
+//   return BUI.html`
+//       <bim-button class="phone-menu-toggler" icon="solar:settings-bold"
+//         @click="${() => {
+//       if (panel.classList.contains("options-menu-visible")) {
+//         panel.classList.remove("options-menu-visible");
+//       } else {
+//         panel.classList.add("options-menu-visible");
+//       }
+//     }}">
+//       </bim-button>
+//     `;
 // });
 
-// const viewerGrids = components.get(OBC.Grids);
-// viewerGrids.create(world);
+// document.body.append(button);
+
+/* MD
+### 🔴🔵 Classifying your BIM models
+---
+
+In this tutorial, you'll learn how to classify your BIM models by different criterias, how to get the list of items that belong to a specific category and how to change their color.
+
+:::tip Why classifications?
+
+Classifications are a powerful way to organize your BIM models. They allow you to group them according to different parameters. For example: getting all the walls, or all the items that belong to a specific floor or room.
+
+:::
+
+In this tutorial, we will import:
+
+- `Three.js` to get some 3D entities for our app.
+- `web-ifc` to get some IFC items.
+- `@thatopen/ui` to add some simple and cool UI menus.
+- `@thatopen/components` to set up the barebone of our app.
+- `Stats.js` (optional) to measure the performance of our app.
+*/
+
+// import * as THREE from "three";
+// import * as BUI from "@thatopen/ui";
+// import * as WEBIFC from "web-ifc";
+// import * as OBC from "@thatopen/components";
+
+// /* MD
+//   ### 🌎 Setting up a simple scene
+//   ---
+
+//   We will start by creating a simple scene with a camera and a renderer. If you don't know how to set up a scene, you can check the Worlds tutorial.
+// */
+
+// const container = document.getElementById("app")!;
+// const components = new OBC.Components();
+// const worlds = components.get(OBC.Worlds);
+
+// const world = worlds.create<
+//   OBC.SimpleScene,
+//   OBC.SimpleCamera,
+//   OBC.SimpleRenderer
+// >();
+
+// world.scene = new OBC.SimpleScene(components);
+// world.renderer = new OBC.SimpleRenderer(components, container);
+// world.camera = new OBC.SimpleCamera(components);
 
 // components.init();
 
-// const ifcLoader = components.get(OBC.IfcLoader);
-// await ifcLoader.setup();
+// world.camera.controls.setLookAt(12, 6, 8, 0, 0, -10);
 
-// const fragmentsManager = components.get(OBC.FragmentsManager);
-// fragmentsManager.onFragmentsLoaded.add((model) => {
-//   if (world.scene) world.scene.three.add(model);
-// });
+// world.scene.setup();
 
-// /* MD 
-//   ## Displaying elements grouping 📦
+// const grids = components.get(OBC.Grids);
+// grids.create(world);
+
+// /* MD
+
+//   We'll make the background of the scene transparent so that it looks good in our docs page, but you don't have to do that in your app!
+
+// */
+
+// world.scene.three.background = null;
+
+// /* MD
+//   ### 🧳 Loading a BIM model
 //   ---
-//   One of the greatest things we can make using BIM models is to group elements based on their properties. This has many use cases! Like grouping elements to check their collisions 💥, grouping elements based on their construction activities 🔨, or grouping fininshed elements during the construction phase ✅. 
-  
-//   Other than grouping the elements, the next most important thing is to show them to your user in an easy way... well, here is where it comes the `ClassificationsTree` functional component!
 
-//   ### Creating the classifications tree
-//   First things first, let's create an instance of the functional component, like this:
-//   */
+//  We'll start by adding a BIM model to our scene. That model is already converted to fragments, so it will load much faster than if we loaded the IFC file.
 
-// const [classificationsTree, updateClassificationsTree] =
-//   CUI.tables.classificationTree({
-//     components,
-//     classifications: [],
-//   });
+//   :::tip Fragments?
 
-// /* MD 
-//   Now that we have the classifications tree created, let's tell the `FragmentsManager` that each time a model is loaded it needs to classify the model based on some conditions, but more importantly is that right after those classifications are made it needs to update the classifications tree!
-//   */
+//     If you are not familiar with fragments, check out the IfcLoader tutorial!
+
+//   :::
+// */
+
+// const fragments = new OBC.FragmentsManager(components);
+// const file = await fetch(
+//   "https://thatopen.github.io/engine_components/resources/small.frag",
+// );
+// const data = await file.arrayBuffer();
+// const buffer = new Uint8Array(data);
+// const model = fragments.load(buffer);
+// world.scene.three.add(model);
+
+// /* MD
+//   ### 🗃️ Classifiying the BIM model
+//   ---
+
+//  Next, we will set up a classifier that will help us identify the objects in the scene by their classification (e.g. their spatial structure or their category). Although you can instantiate the classifier by hand, we will use components.get() to get the classifier. All components are meant to be singletons by Components instance, and this method will make sure that this is the case.
+// */
 
 // const classifier = components.get(OBC.Classifier);
 
-// fragmentsManager.onFragmentsLoaded.add(async (model) => {
-//   // This creates a classification system named "entities"
-//   classifier.byEntity(model);
+// /* MD
+// Now we can classify the BIM model. The classifier includes 3 methods:
+// - `byEntity`: classifies the model by IFC category.
+// - `byIfcrel`: classifies the model by an indirect relationship. In this case, we'll classify the model by its spatial structure (project, site, storey an space).
+// - `byModel`: classifies the model by model. This might seem redundant, but it's useful if you have multiple BIM models in the same scene and want to quickly select all the objects of one of them.
+// */
 
-//   // This creates a classification system named "predefinedTypes"
-//   await classifier.byPredefinedType(model);
+// classifier.byEntity(model);
+// classifier.byIfcRel(model, WEBIFC.IFCRELCONTAINEDINSPATIALSTRUCTURE, "storeys");
 
-//   // This classifications in the state of the classifications tree.
-//   // Is an array with the classification systems to be shown.
-//   // You can pass the system name directly, or an object with system and label keys.
-//   // The system key is the name in the classifier, and the label is how you want it to be shown in the table.
-//   const classifications = [
-//     { system: "entities", label: "Entities" },
-//     { system: "predefinedTypes", label: "Predefined Types" },
-//   ];
+// /* MD
+// Now, to get the fragments set that belong to a certain classification, we can use the `find()` method. This method allows us to pass an object with filters. For example, to get all items of category "IFCWALLSTANDARDCASE", we can do:
+// */
 
-//   updateClassificationsTree({ classifications });
+// const walls = classifier.find({
+//   entities: ["IFCWALLSTANDARDCASE"],
 // });
 
 // /* MD
-//   The `classifications` value is just an array of the classification systems from the Classifier that you want to display in the user interface, where `system` is the name in `classifier.list` and `label` is the name you want to use to display in the UI. Needless to say, the classifications need to be computed before they can be used on the tree.
-  
-//   Great! As we already told the UI when it needs to update, let's add the classifications tree to the HTML page. For it, let's create simple BIM panel component where we include the tree and also a pre-made IFC load button 👇
-//   */
+// Now, let's do that some more times. We'll gather some objects by category to later control its color from a fancy UI that we will build:
+// */
 
-// const panel = BUI.Component.create(() => {
-//   const [loadIfcBtn] = CUI.buttons.loadIfc({ components });
+// const slabs = classifier.find({
+//   entities: ["IFCSLAB"],
+// });
 
+// const curtainWalls = classifier.find({
+//   entities: ["IFCMEMBER", "IFCPLATE"],
+// });
+
+// const furniture = classifier.find({
+//   entities: ["IFCFURNISHINGELEMENT"],
+// });
+
+// const doors = classifier.find({
+//   entities: ["IFCDOOR"],
+// });
+
+// /* MD
+//   ### ⏱️ Measuring the performance (optional)
+//   ---
+
+//   We'll use the [Stats.js](https://github.com/mrdoob/stats.js) to measure the performance of our app. We will add it to the top left corner of the viewport. This way, we'll make sure that the memory consumption and the FPS of our app are under control.
+// */
+
+// /* MD
+//   ### 🧩 Adding some UI
+//   ---
+
+//   We will use the `@thatopen/ui` library to add some simple and cool UI elements to our app. First, we need to call the `init` method of the `BUI.Manager` class to initialize the library:
+// */
+
+// BUI.Manager.init();
+
+// /* MD
+// Now we will add some UI to control the color of the classified elements fetched above. We'll also add a button to reset the color of all items to the original state. For more information about the UI library, you can check the specific documentation for it!
+// */
+
+// const color = new THREE.Color();
+
+// const panel = BUI.Component.create<BUI.PanelSection>(() => {
 //   return BUI.html`
-//    <bim-panel label="Classifications Tree">
-//     <bim-panel-section label="Importing">
-//       ${loadIfcBtn}
-//     </bim-panel-section>
-//     <bim-panel-section label="Classifications">
-//       ${classificationsTree}
-//     </bim-panel-section>
-//    </bim-panel> 
-//   `;
+//     <bim-panel active label="Classifier Tutorial" class="options-menu">
+//       <bim-panel-section collapsed label="Controls">
+
+//         <bim-color-input
+//           label="Walls Color" color="#202932"
+//           @input="${({ target }: { target: BUI.ColorInput }) => {
+//             color.set(target.color);
+//             classifier.setColor(walls, color);
+//           }}">
+//         </bim-color-input>
+
+//         <bim-color-input
+//           label="Slabs Color" color="#202932"
+//           @input="${({ target }: { target: BUI.ColorInput }) => {
+//             color.set(target.color);
+//             classifier.setColor(slabs, color);
+//           }}">
+//         </bim-color-input>
+
+//         <bim-color-input
+//           label="Curtain walls Color" color="#202932"
+//           @input="${({ target }: { target: BUI.ColorInput }) => {
+//             color.set(target.color);
+//             classifier.setColor(curtainWalls, color);
+//           }}">
+//         </bim-color-input>
+
+//         <bim-color-input
+//           label="Furniture Color" color="#202932"
+//           @input="${({ target }: { target: BUI.ColorInput }) => {
+//             color.set(target.color);
+//             classifier.setColor(furniture, color);
+//           }}">
+//         </bim-color-input>
+
+//         <bim-color-input
+//           label="Doors Color" color="#202932"
+//           @input="${({ target }: { target: BUI.ColorInput }) => {
+//             color.set(target.color);
+//             classifier.setColor(doors, color);
+//           }}">
+//         </bim-color-input>
+
+//       </bim-panel-section>
+//     </bim-panel>
+//     `;
 // });
 
-// /* MD
-//   Finally, let's append the BIM Panel to the page to see the classifications tree working 😉
-//   */
-
-// const app = document.createElement("bim-grid");
-// app.layouts = {
-//   main: {
-//     template: `
-//       "panel viewport"
-//       / 23rem 1fr
-//     `,
-//     elements: { panel, viewport },
-//   },
-// };
-
-// app.layout = "main";
-// document.body.append(app);
+// document.body.append(panel);
 
 // /* MD
-//   Congratulations! You've now a ready to go user interface that let's you show your model classifications. 🥳
-//   */
+//   And we will make some logic that adds a button to the screen when the user is visiting our app from their phone, allowing to show or hide the menu. Otherwise, the menu would make the app unusable.
+// */
 
+// const button = BUI.Component.create<BUI.PanelSection>(() => {
+//   return BUI.html`
+//       <bim-button class="phone-menu-toggler" icon="solar:settings-bold"
+//         @click="${() => {
+//           if (panel.classList.contains("options-menu-visible")) {
+//             panel.classList.remove("options-menu-visible");
+//           } else {
+//             panel.classList.add("options-menu-visible");
+//           }
+//         }}">
+//       </bim-button>
+//     `;
+// });
+
+// document.body.append(button);
+
+// /* MD
+//   ### 🎉 Wrap up
+//   ---
+
+//   That's it! You have classified the items of a BIM model by IFC Category, by spatial structure and by model. You can now use the classifier to quickly access the items of one or many BIM models by specific filters.
+// */
