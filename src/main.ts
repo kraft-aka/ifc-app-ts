@@ -6,7 +6,7 @@ import * as OBCF from "@thatopen/components-front";
 import * as THREE from "three";
 import * as CUI from "@thatopen/ui-obc";
 
-const container = document.getElementById("app");
+const container = document.getElementById("app")!;
 
 const components = new OBC.Components();
 
@@ -71,7 +71,7 @@ fragments.onFragmentsLoaded.add((model) => {
     fragmentBox.add(model);
     bbox = fragmentBox.getMesh();
     fragmentBox.reset();
-    console.log("model:", model.ifcMetadata);
+    console.log("model:", model);
   }
 });
 
@@ -127,6 +127,33 @@ function disposeFragments() {
   fragments.dispose();
 }
 
+// clipper 
+const raycaster = components.get(OBC.Raycasters);
+raycaster.get(world);
+
+const clipper = components.get(OBC.Clipper);
+clipper.enabled = true;
+
+const edges = components.get(OBCF.ClipEdges);
+clipper.Type = OBCF.EdgesPlane;
+
+container.ondblclick = () => {
+  if (clipper.enabled) {
+    clipper.create(world);
+    console.log("clipper placed");
+  }
+};
+
+window.onkeydown = (e) => {
+  if (e.code === "Delete" || e.code === "Backspace") {
+    if (clipper.enabled) {
+      clipper.deleteAll(world);
+      console.log("clipper deleted");
+    }
+  }
+};
+
+// TODO: FIX CLIPPING PLANE
 const componentClassifier = components.get(OBC.Classifier);
 
 let walls: THREE.Mesh | null = null;
@@ -250,30 +277,30 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
             
         <bim-button label="Export fragments"
           @click="${() => {
-      exportFragments();
-    }}">
+            exportFragments();
+          }}">
 
     <bim-button label="Refresh scene"
           @click="${() => {
-      disposeFragments();
-    }}">
+            disposeFragments();
+          }}">
         </bim-button> 
         
         <bim-button 
         label="Fit BIM model" 
         @click="${() => {
-      if (bbox) {
-        world.camera.controls.fitToSphere(bbox, true);
-      } else {
-        console.log("Bound ing box is not available to fit this camera!");
-      }
-    }}">  
+          if (bbox) {
+            world.camera.controls.fitToSphere(bbox, true);
+          } else {
+            console.log("Bound ing box is not available to fit this camera!");
+          }
+        }}">  
       </bim-button>  
       <bim-button 
         label="Comment" 
         @click="${() => {
-      showComment();
-    }}">  
+          showComment();
+        }}">  
       </bim-button>  
 
       
@@ -283,36 +310,74 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
         <bim-color-input 
           label="Walls Color" 
           @input="${({ target }: { target: BUI.ColorInput }) => {
-      color.set(target.color);
-      componentClassifier.setColor(walls, color);
-    }}">
+            color.set(target.color);
+            componentClassifier.setColor(walls, color);
+          }}">
         </bim-color-input>
       
         <bim-color-input 
           label="Slabs Color"  
           @input="${({ target }: { target: BUI.ColorInput }) => {
-      color.set(target.color);
-      componentClassifier.setColor(slabs, color);
-    }}">
+            color.set(target.color);
+            componentClassifier.setColor(slabs, color);
+          }}">
         </bim-color-input>
 
         <bim-color-input 
         label="Slabs Color"  
         @input="${({ target }: { target: BUI.ColorInput }) => {
-      color.set(target.color);
-      componentClassifier.setColor(doors, color);
-    }}">
+          color.set(target.color);
+          componentClassifier.setColor(doors, color);
+        }}">
       </bim-color-input>
  
         <bim-button 
           label="Reset walls color" 
           @click="${() => {
-      componentClassifier.resetColor(allItems);
-    }}">  
+            componentClassifier.resetColor(allItems);
+          }}">  
         </bim-button>
 
       </bim-panel-section>
       
+    <bim-checkbox label="Clipper enabled" checked 
+      @change="${({ target }: { target: BUI.Checkbox }) => {
+        clipper.enabled = target.value;
+      }}">
+    </bim-checkbox>
+    
+    <bim-checkbox label="Clipper visible" checked 
+      @change="${({ target }: { target: BUI.Checkbox }) => {
+        clipper.visible = target.value;
+      }}">
+    </bim-checkbox>
+  
+    <bim-color-input 
+      label="Planes Color" color="#202932" 
+      @input="${({ target }: { target: BUI.ColorInput }) => {
+        clipper.material.color.set(target.color);
+      }}">
+    </bim-color-input>
+    
+    <bim-number-input 
+      slider step="0.01" label="Planes opacity" value="0.2" min="0.1" max="1"
+      @change="${({ target }: { target: BUI.NumberInput }) => {
+        clipper.material.opacity = target.value;
+      }}">
+    </bim-number-input>
+    
+    <bim-number-input 
+      slider step="0.1" label="Planes size" value="5" min="2" max="10"
+      @change="${({ target }: { target: BUI.NumberInput }) => {
+        clipper.size = target.value;
+      }}">
+    </bim-number-input>  
+    <bim-button 
+          label="Delete all" 
+          @click="${() => {
+            clipper.deleteAll();
+          }}">  
+        </bim-button>       
     </bim-panel>
   `;
 });
