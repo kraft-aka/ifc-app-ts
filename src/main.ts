@@ -8,7 +8,7 @@ import * as CUI from "@thatopen/ui-obc";
 
 const container = document.getElementById("app");
 
-const components = new OBC.Components()
+const components = new OBC.Components();
 
 const worlds = components.get(OBC.Worlds);
 
@@ -61,16 +61,19 @@ for (const cat of exludedCats) {
 fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = false;
 
 // add bounding box
-//const fragmentBox = components.get(OBC.BoundingBoxer);
+const fragmentBox = components.get(OBC.BoundingBoxer);
 let bbox: THREE.Mesh | null = null;
 let model: THREE.Object3D | null = null;
 
 fragments.onFragmentsLoaded.add((model) => {
   if (world.scene) {
-    world.scene.three.add(model)
-    console.log(model)
+    world.scene.three.add(model);
+    fragmentBox.add(model);
+    bbox = fragmentBox.getMesh();
+    fragmentBox.reset();
+    console.log("model:", model.ifcMetadata);
   }
-})
+});
 
 // classification tree
 const [classificationsTree, updateClassificationsTree] =
@@ -82,17 +85,16 @@ const [classificationsTree, updateClassificationsTree] =
 const classifier = components.get(OBC.Classifier);
 
 fragments.onFragmentsLoaded.add(async (model) => {
-  classifier.byEntity(model)
+  classifier.byEntity(model);
   await classifier.byPredefinedType(model);
 
   const classifications = [
     { system: "entities", label: "Entities" },
-    { system: "predefinedTypes", label: "Predefined Types" },
+    // { system: "predefinedTypes", label: "Predefined Types" },
   ];
 
   updateClassificationsTree({ classifications });
 });
-
 
 function download(file: File) {
   const link = document.createElement("a");
@@ -119,9 +121,9 @@ async function exportFragments() {
 
 // cleans the memory
 function disposeFragments() {
-  let item = localStorage.getItem('model');
-  item = ''
-  localStorage.setItem('model', item)
+  let item = localStorage.getItem("model");
+  item = "";
+  localStorage.setItem("model", item);
   fragments.dispose();
 }
 
@@ -171,7 +173,6 @@ const highligher = components.get(OBCF.Highlighter);
 highligher.setup({ world });
 highligher.zoomToSelection = true;
 
-
 // Outliner, sets outline on click event --- disabled
 const outliner = components.get(OBCF.Outliner);
 outliner.world = world;
@@ -198,38 +199,42 @@ highligher.events.select.onClear.add(() => {
 console.log(walls);
 console.log(componentClassifier);
 
-
 function showComment() {
-  const ifcCanvas = container?.querySelector('canvas')
+  const ifcCanvas = container?.querySelector("canvas");
   if (ifcCanvas) {
     const w: number = ifcCanvas.width;
     const h: number = ifcCanvas.height;
     world.renderer?.three.render(world.scene.three, world.camera.three);
-    const gl = ifcCanvas.getContext('webgl2');
+    const gl = ifcCanvas.getContext("webgl2");
     const imageData = new ImageData(w, h);
 
     gl?.readPixels(
-      0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, imageData.data
+      0,
+      0,
+      gl.drawingBufferWidth,
+      gl.drawingBufferHeight,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      imageData.data
     );
 
-    createImageBitmap(imageData, { imageOrientation: "flipY" }).then(image => {
-      const canvas: HTMLCanvasElement = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx: CanvasRenderingContext2D = canvas.getContext('2d')!;
-      ctx.fillRect(0, 0, w, h);
-      ctx.drawImage(image, 0, 0, w, h)
+    createImageBitmap(imageData, { imageOrientation: "flipY" }).then(
+      (image) => {
+        const canvas: HTMLCanvasElement = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx: CanvasRenderingContext2D = canvas.getContext("2d")!;
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(image, 0, 0, w, h);
 
-      container?.appendChild(canvas);
-      console.log(ifcCanvas, w, h)
-    })
-
+        container?.appendChild(canvas);
+        console.log(ifcCanvas, w, h);
+      }
+    );
   }
 }
 
-
 const panel = BUI.Component.create<BUI.PanelSection>(() => {
-
   const [loadIfcBtn] = CUI.buttons.loadIfc({ components });
   return BUI.html`
   <bim-panel active label="IFC-APP-TS" class="options-menu">
