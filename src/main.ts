@@ -127,7 +127,7 @@ function disposeFragments() {
   fragments.dispose();
 }
 
-// clipper 
+// clipper
 const raycaster = components.get(OBC.Raycasters);
 raycaster.get(world);
 
@@ -154,6 +154,23 @@ window.onkeydown = (e) => {
 };
 
 // TODO: FIX CLIPPING PLANE
+
+// add measuring tool
+
+const dimensions = components.get(OBCF.LengthMeasurement);
+dimensions.world = world;
+dimensions.enabled = true;
+dimensions.snapDistance = 1;
+
+container.ondblclick = () => dimensions.create();
+
+window.onkeydown = (e) => {
+  if (e.code === "Delete" || e.code === "Backspace") {
+    dimensions.delete();
+  }
+};
+
+// Classifier
 const componentClassifier = components.get(OBC.Classifier);
 
 let walls: THREE.Mesh | null = null;
@@ -277,106 +294,134 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
             
         <bim-button label="Export fragments"
           @click="${() => {
-            exportFragments();
-          }}">
+      exportFragments();
+    }}">
 
     <bim-button label="Refresh scene"
           @click="${() => {
-            disposeFragments();
-          }}">
+      disposeFragments();
+    }}">
         </bim-button> 
         
         <bim-button 
         label="Fit BIM model" 
         @click="${() => {
-          if (bbox) {
-            world.camera.controls.fitToSphere(bbox, true);
-          } else {
-            console.log("Bound ing box is not available to fit this camera!");
-          }
-        }}">  
+      if (bbox) {
+        world.camera.controls.fitToSphere(bbox, true);
+      } else {
+        console.log("Bound ing box is not available to fit this camera!");
+      }
+    }}">  
       </bim-button>  
       <bim-button 
         label="Comment" 
         @click="${() => {
-          showComment();
-        }}">  
+      showComment();
+    }}">  
       </bim-button>  
 
       
       </bim-panel-section>
+
+      <bim-panel-section collapsed label="Others">
+      <bim-checkbox checked label="Dimensions enabled" 
+        @change="${({ target }: { target: BUI.Checkbox }) => {
+          dimensions.enabled = target.value;
+        }}">  
+      </bim-checkbox>       
+      <bim-checkbox checked label="Dimensions visible" 
+        @change="${({ target }: { target: BUI.Checkbox }) => {
+          dimensions.visible = target.value;
+        }}">  
+      </bim-checkbox>  
+      
+      <bim-color-input 
+        label="Dimensions Color" color="#202932" 
+        @input="${({ target }: { target: BUI.ColorInput }) => {
+          dimensions.color.set(target.color);
+        }}">
+      </bim-color-input>
+      
+      <bim-button label="Delete all"
+        @click="${() => {
+          dimensions.deleteAll();
+        }}">
+      </bim-button>
+
+    </bim-panel-section>
+     
       <bim-panel-section collapsed label="Controls">
       
         <bim-color-input 
           label="Walls Color" 
           @input="${({ target }: { target: BUI.ColorInput }) => {
-            color.set(target.color);
-            componentClassifier.setColor(walls, color);
-          }}">
+      color.set(target.color);
+      componentClassifier.setColor(walls, color);
+    }}">
         </bim-color-input>
       
         <bim-color-input 
           label="Slabs Color"  
           @input="${({ target }: { target: BUI.ColorInput }) => {
-            color.set(target.color);
-            componentClassifier.setColor(slabs, color);
-          }}">
+      color.set(target.color);
+      componentClassifier.setColor(slabs, color);
+    }}">
         </bim-color-input>
 
         <bim-color-input 
         label="Slabs Color"  
         @input="${({ target }: { target: BUI.ColorInput }) => {
-          color.set(target.color);
-          componentClassifier.setColor(doors, color);
-        }}">
+      color.set(target.color);
+      componentClassifier.setColor(doors, color);
+    }}">
       </bim-color-input>
  
         <bim-button 
           label="Reset walls color" 
           @click="${() => {
-            componentClassifier.resetColor(allItems);
-          }}">  
+      componentClassifier.resetColor(allItems);
+    }}">  
         </bim-button>
 
       </bim-panel-section>
       
     <bim-checkbox label="Clipper enabled" checked 
       @change="${({ target }: { target: BUI.Checkbox }) => {
-        clipper.enabled = target.value;
-      }}">
+      clipper.enabled = target.value;
+    }}">
     </bim-checkbox>
     
     <bim-checkbox label="Clipper visible" checked 
       @change="${({ target }: { target: BUI.Checkbox }) => {
-        clipper.visible = target.value;
-      }}">
+      clipper.visible = target.value;
+    }}">
     </bim-checkbox>
   
     <bim-color-input 
       label="Planes Color" color="#202932" 
       @input="${({ target }: { target: BUI.ColorInput }) => {
-        clipper.material.color.set(target.color);
-      }}">
+      clipper.material.color.set(target.color);
+    }}">
     </bim-color-input>
     
     <bim-number-input 
       slider step="0.01" label="Planes opacity" value="0.2" min="0.1" max="1"
       @change="${({ target }: { target: BUI.NumberInput }) => {
-        clipper.material.opacity = target.value;
-      }}">
+      clipper.material.opacity = target.value;
+    }}">
     </bim-number-input>
     
     <bim-number-input 
       slider step="0.1" label="Planes size" value="5" min="2" max="10"
       @change="${({ target }: { target: BUI.NumberInput }) => {
-        clipper.size = target.value;
-      }}">
+      clipper.size = target.value;
+    }}">
     </bim-number-input>  
     <bim-button 
           label="Delete all" 
           @click="${() => {
-            clipper.deleteAll();
-          }}">  
+      clipper.deleteAll();
+    }}">  
         </bim-button>       
     </bim-panel>
   `;
@@ -384,47 +429,25 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
 
 document.body.append(panel);
 
-// const button = BUI.Component.create<BUI.PanelSection>(() => {
-//   return BUI.html`
-//       <bim-button class="phone-menu-toggler" icon="solar:settings-bold"
-//         @click="${() => {
-//       if (panel.classList.contains("options-menu-visible")) {
-//         panel.classList.remove("options-menu-visible");
-//       } else {
-//         panel.classList.add("options-menu-visible");
-//       }
-//     }}">
-//       </bim-button>
-//     `;
-// });
-
-// document.body.append(button);
-
 /* MD
-### 🔴🔵 Classifying your BIM models
+### 📐 Measuring lengths
 ---
 
-In this tutorial, you'll learn how to classify your BIM models by different criterias, how to get the list of items that belong to a specific category and how to change their color.
+Space control is one of the most important elements of BIM applications. In this tutorial, you'll learn how to expose a length measurement tool to your end users.
 
-:::tip Why classifications?
+We will import:
 
-Classifications are a powerful way to organize your BIM models. They allow you to group them according to different parameters. For example: getting all the walls, or all the items that belong to a specific floor or room.
-
-:::
-
-In this tutorial, we will import:
-
-- `Three.js` to get some 3D entities for our app.
-- `web-ifc` to get some IFC items.
-- `@thatopen/ui` to add some simple and cool UI menus.
+- `three` to create some 3D items.
 - `@thatopen/components` to set up the barebone of our app.
+- `@thatopen/components-front` to use some frontend-oriented components.
+- `@thatopen/ui` to add some simple and cool UI menus.
 - `Stats.js` (optional) to measure the performance of our app.
 */
 
+// import * as OBC from "@thatopen/components";
 // import * as THREE from "three";
 // import * as BUI from "@thatopen/ui";
-// import * as WEBIFC from "web-ifc";
-// import * as OBC from "@thatopen/components";
+// import * as OBCF from "@thatopen/components-front";
 
 // /* MD
 //   ### 🌎 Setting up a simple scene
@@ -434,22 +457,24 @@ In this tutorial, we will import:
 // */
 
 // const container = document.getElementById("app")!;
+
 // const components = new OBC.Components();
+
 // const worlds = components.get(OBC.Worlds);
 
 // const world = worlds.create<
 //   OBC.SimpleScene,
 //   OBC.SimpleCamera,
-//   OBC.SimpleRenderer
+//   OBCF.PostproductionRenderer
 // >();
 
 // world.scene = new OBC.SimpleScene(components);
-// world.renderer = new OBC.SimpleRenderer(components, container);
+// world.renderer = new OBCF.PostproductionRenderer(components, container);
 // world.camera = new OBC.SimpleCamera(components);
 
 // components.init();
 
-// world.camera.controls.setLookAt(12, 6, 8, 0, 0, -10);
+// world.camera.controls.setLookAt(5, 5, 5, 0, 0, 0);
 
 // world.scene.setup();
 
@@ -465,73 +490,52 @@ In this tutorial, we will import:
 // world.scene.three.background = null;
 
 // /* MD
-//   ### 🧳 Loading a BIM model
+//   ### 🎲 Creating a Cube Mesh
+//   ---
+//   For this tutorial we will use a Cube, you can add any geometry as per your preference. We will create a [Cube](https://threejs.org/docs/index.html?q=box#api/en/geometries/BoxGeometry) with `3x3x3` dimensions and use red color for the material.
+// */
+
+// const cubeGeometry = new THREE.BoxGeometry(3, 3, 3);
+// const cubeMaterial = new THREE.MeshStandardMaterial({ color: "#6528D7" });
+// const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+// cube.position.set(0, 1.5, 0);
+// world.scene.three.add(cube);
+// world.meshes.add(cube);
+
+// /* MD
+//   ### 🛠️ Getting the length measurements
 //   ---
 
-//  We'll start by adding a BIM model to our scene. That model is already converted to fragments, so it will load much faster than if we loaded the IFC file.
-
-//   :::tip Fragments?
-
-//     If you are not familiar with fragments, check out the IfcLoader tutorial!
-
-//   :::
+//   First, let's get an instance of the length measurement component and initialize it:
 // */
 
-// const fragments = new OBC.FragmentsManager(components);
-// const file = await fetch(
-//   "https://thatopen.github.io/engine_components/resources/small.frag",
-// );
-// const data = await file.arrayBuffer();
-// const buffer = new Uint8Array(data);
-// const model = fragments.load(buffer);
-// world.scene.three.add(model);
+// const dimensions = components.get(OBCF.LengthMeasurement);
+// dimensions.world = world;
+// dimensions.enabled = true;
+// dimensions.snapDistance = 1;
 
 // /* MD
-//   ### 🗃️ Classifiying the BIM model
+//   ### 🖱️ Setting up mouse events
 //   ---
 
-//  Next, we will set up a classifier that will help us identify the objects in the scene by their classification (e.g. their spatial structure or their category). Although you can instantiate the classifier by hand, we will use components.get() to get the classifier. All components are meant to be singletons by Components instance, and this method will make sure that this is the case.
+//   Now, we'll define how to create the length dimensions. In this case, we'll keep it simple and use the double click event of the container HTML element.
 // */
 
-// const classifier = components.get(OBC.Classifier);
+// container.ondblclick = () => dimensions.create();
 
 // /* MD
-// Now we can classify the BIM model. The classifier includes 3 methods:
-// - `byEntity`: classifies the model by IFC category.
-// - `byIfcrel`: classifies the model by an indirect relationship. In this case, we'll classify the model by its spatial structure (project, site, storey an space).
-// - `byModel`: classifies the model by model. This might seem redundant, but it's useful if you have multiple BIM models in the same scene and want to quickly select all the objects of one of them.
+
+//   ### 🧹 Deleting the Dimensions
+//   ---
+
+//   Now that we know how to make multiple dimensions, we'll learn how to delete them when necessary. Dimensions can be removed using the `deleteAll()` method, which deletes all the created dimensions. You can also use `delete` to just remove the dimension under the mouse cursor. Again, we'll keep it simple and bind this event to the keydown event. Specifically, it will fire when the user presses the `Delete` or `Backspace` key.
 // */
 
-// classifier.byEntity(model);
-// classifier.byIfcRel(model, WEBIFC.IFCRELCONTAINEDINSPATIALSTRUCTURE, "storeys");
-
-// /* MD
-// Now, to get the fragments set that belong to a certain classification, we can use the `find()` method. This method allows us to pass an object with filters. For example, to get all items of category "IFCWALLSTANDARDCASE", we can do:
-// */
-
-// const walls = classifier.find({
-//   entities: ["IFCWALLSTANDARDCASE"],
-// });
-
-// /* MD
-// Now, let's do that some more times. We'll gather some objects by category to later control its color from a fancy UI that we will build:
-// */
-
-// const slabs = classifier.find({
-//   entities: ["IFCSLAB"],
-// });
-
-// const curtainWalls = classifier.find({
-//   entities: ["IFCMEMBER", "IFCPLATE"],
-// });
-
-// const furniture = classifier.find({
-//   entities: ["IFCFURNISHINGELEMENT"],
-// });
-
-// const doors = classifier.find({
-//   entities: ["IFCDOOR"],
-// });
+// window.onkeydown = (event) => {
+//   if (event.code === "Delete" || event.code === "Backspace") {
+//     dimensions.delete();
+//   }
+// };
 
 // /* MD
 //   ### ⏱️ Measuring the performance (optional)
@@ -550,55 +554,41 @@ In this tutorial, we will import:
 // BUI.Manager.init();
 
 // /* MD
-// Now we will add some UI to control the color of the classified elements fetched above. We'll also add a button to reset the color of all items to the original state. For more information about the UI library, you can check the specific documentation for it!
+// Now we will add some UI to have some control over the dimensions we create. For more information about the UI library, you can check the specific documentation for it!
 // */
-
-// const color = new THREE.Color();
 
 // const panel = BUI.Component.create<BUI.PanelSection>(() => {
 //   return BUI.html`
-//     <bim-panel active label="Classifier Tutorial" class="options-menu">
+//   <bim-panel active label="Length Measurement Tutorial" class="options-menu">
 //       <bim-panel-section collapsed label="Controls">
+//           <bim-label>Create dimension: Double click</bim-label>
+//           <bim-label>Delete dimension: Delete</bim-label>
+//       </bim-panel-section>
+
+//       <bim-panel-section collapsed label="Others">
+//         <bim-checkbox checked label="Dimensions enabled"
+//           @change="${({ target }: { target: BUI.Checkbox }) => {
+//             dimensions.enabled = target.value;
+//           }}">
+//         </bim-checkbox>
+//         <bim-checkbox checked label="Dimensions visible"
+//           @change="${({ target }: { target: BUI.Checkbox }) => {
+//             dimensions.visible = target.value;
+//           }}">
+//         </bim-checkbox>
 
 //         <bim-color-input
-//           label="Walls Color" color="#202932"
+//           label="Dimensions Color" color="#202932"
 //           @input="${({ target }: { target: BUI.ColorInput }) => {
-//             color.set(target.color);
-//             classifier.setColor(walls, color);
+//             dimensions.color.set(target.color);
 //           }}">
 //         </bim-color-input>
 
-//         <bim-color-input
-//           label="Slabs Color" color="#202932"
-//           @input="${({ target }: { target: BUI.ColorInput }) => {
-//             color.set(target.color);
-//             classifier.setColor(slabs, color);
+//         <bim-button label="Delete all"
+//           @click="${() => {
+//             dimensions.deleteAll();
 //           }}">
-//         </bim-color-input>
-
-//         <bim-color-input
-//           label="Curtain walls Color" color="#202932"
-//           @input="${({ target }: { target: BUI.ColorInput }) => {
-//             color.set(target.color);
-//             classifier.setColor(curtainWalls, color);
-//           }}">
-//         </bim-color-input>
-
-//         <bim-color-input
-//           label="Furniture Color" color="#202932"
-//           @input="${({ target }: { target: BUI.ColorInput }) => {
-//             color.set(target.color);
-//             classifier.setColor(furniture, color);
-//           }}">
-//         </bim-color-input>
-
-//         <bim-color-input
-//           label="Doors Color" color="#202932"
-//           @input="${({ target }: { target: BUI.ColorInput }) => {
-//             color.set(target.color);
-//             classifier.setColor(doors, color);
-//           }}">
-//         </bim-color-input>
+//         </bim-button>
 
 //       </bim-panel-section>
 //     </bim-panel>
@@ -611,25 +601,9 @@ In this tutorial, we will import:
 //   And we will make some logic that adds a button to the screen when the user is visiting our app from their phone, allowing to show or hide the menu. Otherwise, the menu would make the app unusable.
 // */
 
-// const button = BUI.Component.create<BUI.PanelSection>(() => {
-//   return BUI.html`
-//       <bim-button class="phone-menu-toggler" icon="solar:settings-bold"
-//         @click="${() => {
-//           if (panel.classList.contains("options-menu-visible")) {
-//             panel.classList.remove("options-menu-visible");
-//           } else {
-//             panel.classList.add("options-menu-visible");
-//           }
-//         }}">
-//       </bim-button>
-//     `;
-// });
-
-// document.body.append(button);
-
 // /* MD
 //   ### 🎉 Wrap up
 //   ---
 
-//   That's it! You have classified the items of a BIM model by IFC Category, by spatial structure and by model. You can now use the classifier to quickly access the items of one or many BIM models by specific filters.
+//   That's it! You have created an app that can create and delete length measurements on any 3D object. Congratulations!
 // */
