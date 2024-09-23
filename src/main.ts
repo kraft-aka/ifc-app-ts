@@ -68,6 +68,7 @@ let model: THREE.Object3D | null = null;
 fragments.onFragmentsLoaded.add((model) => {
   if (world.scene) {
     world.scene.three.add(model);
+    world.meshes.add(model);
     fragmentBox.add(model);
     bbox = fragmentBox.getMesh();
     fragmentBox.reset();
@@ -133,6 +134,7 @@ raycaster.get(world);
 
 const clipper = components.get(OBC.Clipper);
 clipper.enabled = true;
+console.log(clipper)
 
 const edges = components.get(OBCF.ClipEdges);
 clipper.Type = OBCF.EdgesPlane;
@@ -153,22 +155,40 @@ window.onkeydown = (e) => {
   }
 };
 
+const blueFill = new THREE.MeshBasicMaterial({ color: "lightblue", side: 2 });
+const blueLine = new THREE.LineBasicMaterial({ color: "blue" });
+const blueOutline = new THREE.MeshBasicMaterial({
+  color: "blue",
+  opacity: 0.5,
+  side: 2,
+  transparent: true,
+});
+
+edges.styles.create(
+  "Red lines",
+  new Set(model),
+  world,
+  blueLine,
+  blueFill,
+  blueOutline,
+);
+
 // TODO: FIX CLIPPING PLANE
 
 // add measuring tool
 
-const dimensions = components.get(OBCF.LengthMeasurement);
-dimensions.world = world;
-dimensions.enabled = true;
-dimensions.snapDistance = 1;
+// const dimensions = components.get(OBCF.LengthMeasurement);
+// dimensions.world = world;
+// dimensions.enabled = true;
+// dimensions.snapDistance = 0.1;
 
-container.ondblclick = () => dimensions.create();
+// container.ondblclick = () => dimensions.create();
 
-window.onkeydown = (e) => {
-  if (e.code === "Delete" || e.code === "Backspace") {
-    dimensions.delete();
-  }
-};
+// window.onkeydown = (e) => {
+//   if (e.code === "Delete" || e.code === "Backspace") {
+//     dimensions.delete(world);
+//   }
+// };
 
 // Classifier
 const componentClassifier = components.get(OBC.Classifier);
@@ -323,34 +343,34 @@ const panel = BUI.Component.create<BUI.PanelSection>(() => {
       
       </bim-panel-section>
 
-      <bim-panel-section collapsed label="Others">
+      <bim-panel-section collapsed label="Dimensions">
       <bim-checkbox checked label="Dimensions enabled" 
         @change="${({ target }: { target: BUI.Checkbox }) => {
-          dimensions.enabled = target.value;
-        }}">  
+      dimensions.enabled = target.value;
+    }}">  
       </bim-checkbox>       
       <bim-checkbox checked label="Dimensions visible" 
         @change="${({ target }: { target: BUI.Checkbox }) => {
-          dimensions.visible = target.value;
-        }}">  
+      dimensions.visible = target.value;
+    }}">  
       </bim-checkbox>  
       
       <bim-color-input 
         label="Dimensions Color" color="#202932" 
         @input="${({ target }: { target: BUI.ColorInput }) => {
-          dimensions.color.set(target.color);
-        }}">
+      dimensions.color.set(target.color);
+    }}">
       </bim-color-input>
       
       <bim-button label="Delete all"
         @click="${() => {
-          dimensions.deleteAll();
-        }}">
+      dimensions.deleteAll();
+    }}">
       </bim-button>
 
     </bim-panel-section>
      
-      <bim-panel-section collapsed label="Controls">
+      <bim-panel-section collapsed label="Colors">
       
         <bim-color-input 
           label="Walls Color" 
